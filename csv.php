@@ -38,10 +38,10 @@ class Csv {
 		return $values;
 	}
 
-	static public function escapeString($string) {
+    static public function escapeString($string, $separator = ',', $force = false) {
 		$string = str_replace('"', '""', $string);
-		if (strpos($string, '"') !== false or strpos($string, ',') !== false or strpos($string, "\r") !== false or strpos($string, "\n") !== false) {
-			$string = '"'.$string.'"';
+        if ($force !== false or strpos($string, '"') !== false or strpos($string, $separator) !== false or strpos($string, "\r") !== false or strpos($string, "\n") !== false) {
+            $string = '"' . $string . '"';
 		}
 
 		return $string;
@@ -146,8 +146,12 @@ class CsvReader implements Iterator {
 class CsvWriter {
 
 	protected $fileHandle = null;
+    protected $separator;
+    protected $force_escape_all = false;
 
-	public function __construct($filename, $mode = 'w') {
+    public function __construct($filename, $mode = 'w', $separator = ',') {
+        $this->separator = $separator;
+
 		if ($mode != 'w' and $mode != 'a') throw new Exception('CsvWriter only accepts "w" and "a" mode.');
 		$this->fileHandle = fopen($filename, $mode);
 		if (!$this->fileHandle) throw new Exception("Impossible to open file $filename.");
@@ -157,11 +161,28 @@ class CsvWriter {
 		$this->close();
 	}
 
+	/**
+	 * Set new separator. <br>
+	 * Default ','
+	 */
+    public function setSeparator($separator) {
+        $this->separator = $separator;
+    }
+
+    /**
+     * Escape all field "","","",... <br>
+	 * or "";"";""...
+     * @param boolean $force 
+     */
+    public function setForceEscape($force) {
+        $this->force_escape_all = $force;
+    }
+
 	public function addLine(array $values) {
 		foreach ($values as $key => $value) {
-			$values[$key] = utf8_decode(Csv::escapeString($value));
+            $values[$key] = utf8_decode(Csv::escapeString($value, $this->separator, $this->force_escape_all));
 		}
-		$string = implode(',', $values) . "\r\n";
+        $string = implode($this->separator, $values) . "\r\n";
 		fwrite($this->fileHandle, $string);
 	}
 
